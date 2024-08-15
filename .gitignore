@@ -4,3 +4,5 @@ __pycache__
 jquery-3.71.min.js
 notes.txt
 .env
+venv
+input_braintorm.txt

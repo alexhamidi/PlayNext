@@ -1,15 +1,15 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from backend.utils import * 
-from backend.ml import * 
+from utils import * 
+from ml import * 
+from torch import *
 
-import uvicorn
 
 app = FastAPI()
 
 origins = [
-    "http://127.0.0.1:8080"
+  'http://localhost:8080'
 ]
 
 
@@ -23,25 +23,32 @@ app.add_middleware(
 
 
 class Request(BaseModel):
-    text: str
+    gooddata: str
+    baddata: str
 
 @app.post("/predict")
 async def predict(request: Request):
     try:
-        input = request.text
+        gooddata = request.gooddata
+        baddata = request.baddata
 
-        input_song_ids = raw_input_to_song_ids(input)
-        train_data = song_ids_to_feature_tensor(input_song_ids)
+        goodids, badids = raw_input_to_song_ids(gooddata, baddata)
 
-        testing_song_ids = get_all_artist_songs(input_song_ids)
-        test_data = song_ids_to_feature_tensor(testing_song_ids)
+        train_data = await song_ids_to_feature_tensor(goodids, badids)
+
+
+        # testing_song_ids = get_all_artist_songs(input_song_ids)
+        # test_data = song_ids_to_feature_tensor(testing_song_ids)
 
         parameters = train(train_data)
-        results = predict(parameters, test_data)
+        # results = predict(parameters, test_data)
 
-        return results
+        return "Hello"
     except Exception as e:
+        print(e) 
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="localhost", port=8040)
+    import uvicorn  
+
+    uvicorn.run("app:app", host="localhost", port=8040, reload=True)

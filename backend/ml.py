@@ -17,14 +17,16 @@ returns: classification: 0/1
 
 # returns parameters (Ws and Bs)
 def train(train_data):
-    d=1
+    
+    print('hi')
+
 
 
 
 
 # returns an array of song ids that passed classification based on the parameters
 def predict(parameters, test_data):
-    d=1
+    return 0
 
 
 

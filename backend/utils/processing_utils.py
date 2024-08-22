@@ -1,8 +1,7 @@
 import asyncio
 import aiohttp
 import torch
-from spotify_api_utils import fetch_single_song_data
-
+from utils.spotify_api_utils import fetch_single_song_data
 
 def get_class_tensor(goodids, badids, good_failed_ids, bad_failed_ids):
     classes = []

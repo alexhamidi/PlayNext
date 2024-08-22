@@ -1,6 +1,9 @@
 import torch
+import numpy as np
 from torch import nn
 import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+
 
 class SongClassifier(nn.Module):
     def __init__(self, n_features, n_classes):
@@ -9,38 +12,44 @@ class SongClassifier(nn.Module):
         self.linear_layer_2 = nn.Linear(8, n_classes)
 
     def forward(self, features):
-        x = torch.relu(self.linear_layer_1(features))
+        x = torch.relpip3(self.linear_layer_1(features))
         return self.linear_layer_2(x)
 
-def train_new_model(train_data_features, train_data_classes, epochs=250, lr=0.01):
+def init_nn_model(train_data_features):
     num_features = train_data_features.shape[1]
     num_classes = 2
-    model = SongClassifier(n_features=num_features, n_classes=num_classes)
+    nn_model = SongClassifier(n_features=num_features, n_classes=num_classes)
+    return nn_model
 
-    #used to calculate loss
+def train_nn_model(nn_model, train_data_features, train_data_classes, epochs=100, lr=0.01):
+    num_examples = train_data_features.shape[0]
+    num_features = train_data_features.shape[1]
+    num_classes = 2
+
+    train_dataset = TensorDataset(train_data_features, train_data_classes)
+    train_loader = DataLoader(train_dataset, batch_size=num_examples, shuffle=True)
+    nn_model = SongClassifier(n_features=num_features, n_classes=num_classes)
+
+    nn_model.train()
     criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(nn_model.parameters(), lr=lr)
 
-    # optimizer is reponsible for updating parameters in order to minimize the loss
-    # model.parameters contains all the weights and biases of both linear layers. Passing these to the model allows it to know what to update.
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-
-    # an epoch is a pass through the entire dataset.
     for epoch in range(epochs):
-        optimizer.zero_grad() # reset all parameters to zero
-        outputs = model(train_data_features) # perform a forward pass through the model
-        loss = criterion(outputs, train_data_classes) # calculate the loss by comparing the model's output to the true labels
-        loss.backward() # perform backpropogation
-        optimizer.step() # use the algorithm to update the parameters
+        for train_data_features, train_data_classes in train_loader:
+            outputs = nn_model(train_data_features)
+            loss = criterion(outputs, train_data_classes)
 
-        if (epoch + 1) % 10 == 0:
-            print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step() # update params
 
-    return model
+            if (epoch + 1) % 10 == 0:
+                print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
+
+    return nn_model
 
 
-def retrain_model(model, train_data_features, train_data_classes):
 
-    pass
 
 # problem - mismatch between labels and classes
 def predict_single_example(model, test_data_features):
@@ -49,16 +58,14 @@ def predict_single_example(model, test_data_features):
         output = model(test_data_features)
         predicted = torch.argmax(output, dim=1)  # this provides the index of the prediction (0/1) with the highest confidence.
 
-
     return predicted
-
 
 
 def main():
     train_data_features = torch.tensor([[192.7899, -4.8520, 117.9560, 5.0000, 0.0000, 1.0000], [240.1200, -10.4410, 100.0240, 4.0000, 8.0000, 1.0000], [202.1073, -9.1340, 117.9870, 4.0000, 5.0000, 1.0000], [179.5631, -9.1350, 145.0000, 4.0000, 2.0000, 1.0000], [192.0800, -4.6810, 172.0220, 4.0000, 8.0000, 1.0000], [243.1250, -10.0420, 168.0990, 4.0000, 8.0000, 0.0000], [235.1067, -9.0910, 115.9840, 4.0000, 5.0000, 0.0000], [389.9486, -9.2360, 104.0040, 4.0000, 5.0000, 1.0000], [89.2633, -13.0380, 68.6520, 4.0000, 11.0000, 1.0000], [237.4346, -7.0420, 128.0350, 4.0000, 11.0000, 0.0000], [219.1067, -5.6320, 164.0020, 4.0000, 7.0000, 1.0000], [413.1719, -7.2190, 107.8070, 4.0000, 7.0000, 1.0000], [335.6000, -7.6870, 161.0610, 4.0000, 9.0000, 0.0000], [204.0000, -7.7610, 160.0010, 4.0000, 1.0000, 1.0000], [191.4337, -10.4680, 80.0050, 4.0000, 0.0000, 1.0000], [248.2800, -9.6710, 120.0020, 4.0000, 2.0000, 0.0000], [286.1331, -8.7380, 118.9840, 4.0000, 0.0000, 1.0000], [213.9603, -9.1210, 183.9930, 3.0000, 4.0000, 0.0000], [281.9810, -8.8960, 100.9860, 4.0000, 7.0000, 1.0000], [87.2727, -10.0150, 132.1870, 3.0000, 0.0000, 0.0000], [270.5454, -10.1200, 104.0010, 4.0000, 11.0000, 0.0000], [327.3067, -12.3200, 119.0410, 3.0000, 2.0000, 1.0000], [234.1200, -8.4950, 111.9790, 4.0000, 3.0000, 1.0000], [296.0155, -6.2640, 105.5440, 4.0000, 8.0000, 1.0000], [286.1200, -10.2320, 87.9930, 4.0000, 0.0000, 1.0000], [135.2459, -7.2570, 121.9760, 4.0000, 8.0000, 0.0000], [195.2439, -9.4220, 122.9970, 4.0000, 1.0000, 0.0000], [196.0000, -8.8000, 89.9940, 4.0000, 9.0000, 0.0000], [186.1844, -7.4060, 169.9630, 4.0000, 0.0000, 0.0000], [183.2708, -13.6200, 107.9470, 4.0000, 2.0000, 0.0000], [456.9787, -9.7570, 127.9990, 4.0000, 9.0000, 0.0000], [329.0000, -11.0840, 111.9800, 4.0000, 2.0000, 1.0000], [333.2876, -7.0510, 182.0640, 4.0000, 7.0000, 1.0000], [202.3740, -9.5320, 126.0400, 4.0000, 8.0000, 1.0000], [279.9590, -9.7040, 76.0820, 4.0000, 2.0000, 1.0000], [240.0000, -13.5910, 103.9610, 4.0000, 8.0000, 1.0000], [197.6541, -6.4640, 112.0110, 4.0000, 2.0000, 0.0000], [244.4846, -6.0930, 107.9780, 4.0000, 4.0000, 0.0000], [282.0720, -9.5980, 129.3800, 3.0000, 0.0000, 0.0000], [213.3333, -6.0490, 179.8130, 4.0000, 7.0000, 1.0000], [282.8133, -11.8240, 137.1010, 4.0000, 8.0000, 1.0000], [218.8267, -8.7820, 112.1200, 4.0000, 11.0000, 0.0000], [222.0126, -8.9100, 184.6030, 3.0000, 5.0000, 1.0000], [219.2267, -6.3860, 88.0110, 4.0000, 2.0000, 0.0000], [80.5355, -7.7300, 155.0150, 4.0000, 4.0000, 0.0000], [130.7269, -14.3980, 90.0080, 4.0000, 2.0000, 1.0000], [143.3339, -8.9930, 108.9930, 4.0000, 1.0000, 1.0000], [69.7992, -8.5570, 149.9240, 4.0000, 9.0000, 1.0000], [170.2702, -11.9930, 147.9620, 4.0000, 9.0000, 0.0000], [127.0857, -10.8030, 136.9740, 4.0000, 9.0000, 1.0000], [138.1202, -7.7300, 160.1680, 4.0000, 0.0000, 0.0000], [116.4800, -10.9880, 150.1490, 4.0000, 10.0000, 0.0000], [54.5668, -7.7430, 87.8950, 4.0000, 10.0000, 0.0000], [54.8795, -6.7850, 140.1140, 4.0000, 6.0000, 1.0000], [67.6552, -8.8060, 149.3030, 4.0000, 9.0000, 0.0000], [97.9753, -12.2240, 142.0030, 4.0000, 11.0000, 1.0000], [120.1562, -14.2670, 79.8870, 4.0000, 10.0000, 0.0000], [123.5044, -6.4010, 140.0360, 4.0000, 1.0000, 1.0000], [113.7500, -12.4730, 75.9980, 4.0000, 9.0000, 1.0000], [135.1328, -5.8420, 159.9840, 4.0000, 8.0000, 1.0000], [111.3768, -5.4020, 137.9970, 4.0000, 5.0000, 1.0000], [236.0686, -6.6310, 94.8380, 4.0000, 10.0000, 0.0000], [61.3878, 1.5040, 123.5000, 4.0000, 3.0000, 1.0000], [221.7535, -6.0420, 140.1530, 4.0000, 7.0000, 1.0000], [173.5524, -5.8240, 118.0020, 4.0000, 1.0000, 1.0000], [236.5838, -14.2520, 104.9690, 4.0000, 5.0000, 0.0000], [152.1371, -10.0220, 101.0110, 4.0000, 4.0000, 0.0000], [109.6098, -4.0900, 125.9390, 4.0000, 2.0000, 1.0000], [132.0117, -8.3960, 113.6050, 4.0000, 1.0000, 1.0000], [134.9149, -4.9390, 84.5120, 4.0000, 1.0000, 0.0000], [409.4133, -5.9880, 81.8880, 4.0000, 2.0000, 1.0000], [135.7090, -12.7970, 94.9780, 4.0000, 0.0000, 1.0000], [192.0001, -2.0570, 126.0010, 4.0000, 9.0000, 1.0000], [110.7692, -6.1640, 129.9920, 4.0000, 7.0000, 1.0000], [250.2531, -7.0220, 180.2350, 4.0000, 1.0000, 0.0000], [138.0833, -9.3710, 174.8940, 4.0000, 1.0000, 1.0000], [151.1706, -6.0170, 140.9740, 4.0000, 11.0000, 1.0000], [78.8750, -0.8620, 96.2840, 5.0000, 6.0000, 0.0000], [97.0370, -5.6260, 134.9580, 4.0000, 11.0000, 0.0000], [118.4671, -1.1270, 95.0550, 4.0000, 2.0000, 1.0000], [122.9333, -5.6020, 136.0400, 4.0000, 1.0000, 1.0000], [84.3750, -6.5490, 128.0690, 4.0000, 0.0000, 1.0000], [150.7173, -5.7330, 129.7790, 4.0000, 11.0000, 0.0000], [124.0555, -6.7100, 119.8890, 4.0000, 5.0000, 1.0000], [157.6433, -4.9260, 157.0360, 4.0000, 2.0000, 1.0000], [131.0000, -13.1170, 145.0390, 4.0000, 9.0000, 1.0000], [131.5069, -8.8930, 145.9260, 4.0000, 8.0000, 0.0000]])
     train_data_labels = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    train(train_data_features, train_data_labels)
+    train_nn_model(train_data_features, train_data_labels)
 
 
 if __name__ == "__main__":

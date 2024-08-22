@@ -1,10 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from backend.utils.db_utils import *
-from backend.utils.processing_utils import *
-from backend.utils.spotify_api_utils import *
 from ml import *
+from utils.db_utils import *
+from utils.processing_utils import *
+import uvicorn
 
 # redis - use to store song information by id
 app = FastAPI()
@@ -45,7 +45,7 @@ class TrainRequest(BaseModel):
 
 # maybe dont even need to interface with the db here - only in utils
 
-@app.get("/model_exists")
+@app.post("/model_exists")
 def model_exists(request: ModelRequest):
     try:
         model_name = request.model_name
@@ -56,7 +56,7 @@ def model_exists(request: ModelRequest):
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/model_trained")
+@app.post("/model_trained")
 def model_trained(request: ModelRequest):
     try:
         model_name = request.model_name
@@ -71,12 +71,12 @@ def model_trained(request: ModelRequest):
 def init_model(request: ModelRequest):
     try:
         model_name = request.model_name
+        print(model_name)
         add_model(model_name)
         return {"message": "Model Initialized successfully"}
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/train")
 async def train_endpoint(request: TrainRequest):
@@ -90,23 +90,25 @@ async def train_endpoint(request: TrainRequest):
         negative_example_ids = raw_input_to_song_ids(negative_data)
 
         example_ids_flagged = [(positive_example, 1) for positive_example in positive_example_ids] + [(negative_example, 0) for negative_example in negative_example_ids]
-
         features_tensor, classes_tensor = await song_ids_to_tensors(example_ids_flagged)
 
         nn_model = get_nn_model(model_name)
 
-        if (nn_model is not None):
-            nn_model = retrain_model(nn_model, features_tensor, classes_tensor)
+        if (nn_model is None):
+            nn_model = init_nn_model(features_tensor)
+            nn_model = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
         else:
-            nn_model = train_new_model(features_tensor, classes_tensor)
+            nn_model = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
 
         add_nn_model(nn_model, model_name)
 
-        return  {"message": "Model trained successfully"}# do some type of 'complete' status code here
+        return  {"message": "Model trained successfully"}
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
+if __name__ == "__main__":
+    uvicorn.run("app:app", host="localhost", port=8040, reload=True)
 
 
 '''

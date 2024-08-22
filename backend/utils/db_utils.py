@@ -3,9 +3,12 @@ import io
 import torch
 from ml import SongClassifier
 from redis_om import Field, HashModel, Migrator, NotFoundError
+import warnings
+warnings.filterwarnings("ignore", message="Field .* has conflict with protected namespace .*")
+
 
 class Model(HashModel):
-    model_name: str = Field(index=True)
+    model_name: str = Field(index=True, alias="name")
     nn_model_serialized: Optional[bytes] = Field(default=None)
 
 Migrator().run()
@@ -35,7 +38,6 @@ def get_nn_model(model_name):
     nn_model_serialized = model.nn_model_serialized
     if nn_model_serialized is None:
         return None
-
     try:
         buffer = io.BytesIO(model.nn_model_serialized)
         state_dict = torch.load(buffer)

@@ -1,27 +1,57 @@
 <!DOCTYPE html>
-<html lang = "en">
-    <head>
-        <meta charset="utf-8">
-        <link href="./app.css" rel="stylesheet" type="text/css">
-        <title> PlayNext</title>
-    </head>
-    <body>
-        <section id = 'search'>
-            <header>
-                First box: songs you like (100-300)
-                Second box: songs you hate (100-300)
-            </header>
-            <form id = "linkform">
-                <textarea id="goodtextinput"></textarea>
-                <textarea id="badtextinput"></textarea>
-                <input type = 'submit'/>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <link href="./app.css" rel="stylesheet" type="text/css">
+    <title> PlayNext</title>
+</head>
+
+<body>
+    <div id = "model-not-chosen">
+        Provide the name of an existing model
+        <form id = "existing-model-form">
+            <input id = "existing-model-input" type='text' >
+        </form>
+        <br/>
+        or
+        <br/>
+        <br/>
+        Provide the name of a new model
+        <form id = "new-model-form">
+            <input id = "new-model-input" type='text' >
+        </form>
+    </div>
+
+    <div id = "model-chosen">
+        <header>
+            Current Model: [model]
+            Number of training examples used: [num_examples]
+            You have the following options:
+        </header>
+
+        <button id="add-new-examples"> Add New Songs to Tune recommendations</button>
+        <button id="show-recommendations"> Get Recommendations</button>
+
+
+        <section id = input-data class="page-section">
+            <form id="song-form">
+                <textarea id="positive-examples-input" class="example-input"></textarea>
+                <textarea id="negative-examples-input" class="example-input"></textarea>
+                <input type='submit' />
             </form>
         </section>
-        <section id = 'recommendations' style="width:1rem">
 
+        <section id='recommendations' class="page-section">
+            <button> press to start getting recommendations </button>
         </section>
-    
-        <script src="./jquery-3.7.1.min.js"></script>
-        <script src="./script.js"></script>
-    </body>
+
+        <button id = 'end-model-session'>
+            end current model session
+        </button>
+    </div>
+    <script src="./jquery-3.7.1.min.js"></script>
+    <script src="./script.js"></script>
+</body>
+
 </html>

@@ -1,8 +1,12 @@
-#goodtextinput, #badtextinput{
+* {
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.example-input{
     height: 40rem;
     width: 27rem;
 }
 
-* {
-    font-family: 'Courier New', Courier, monospace;
+.page-section{
+    display: none;
 }

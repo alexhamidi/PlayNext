@@ -25,13 +25,13 @@
 
     <div id = "model-chosen">
         <header>
-            Current Model: [model]
-            Number of training examples used: [num_examples]
-            You have the following options:
+            <span>Current Model: <strong id = model-name></strong></span>
+            <span>Number of training examples used: <strong></strong></span>
+            <span>You have the following options:</span>
         </header>
 
         <button id="add-new-examples"> Add New Songs to Tune recommendations</button>
-        <button id="show-recommendations"> Get Recommendations</button>
+        <button id="show-recs"> Show Recommendations</button>
 
 
         <section id = input-data class="page-section">
@@ -42,8 +42,7 @@
             </form>
         </section>
 
-        <section id='recommendations' class="page-section">
-            <button> press to start getting recommendations </button>
+        <section id='recs' class="page-section">
         </section>
 
         <button id = 'end-model-session'>

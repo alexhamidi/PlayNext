@@ -3,30 +3,24 @@ import aiohttp
 import torch
 from utils.spotify_api_utils import fetch_single_song_data
 
-def get_class_tensor(goodids, badids, good_failed_ids, bad_failed_ids):
-    classes = []
-    for song_id in goodids:
-        if song_id not in good_failed_ids:
-            classes.append(1)
-    for song_id in badids:
-        if song_id not in bad_failed_ids:
-            classes.append(1)
-    return torch.tensor(classes)
 
 
-async def song_ids_to_tensors(song_ids):
+async def song_ids_to_tensors(song_ids_flagged):
     features_list = []
     classes_list = []
 
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch_single_song_data(session, song_id) for song_id in song_ids]
+        tasks = [fetch_single_song_data(session, song_id_flagged) for song_id_flagged in song_ids_flagged]
         results = await asyncio.gather(*tasks)
-
+    # completely off
+    print('succesfully fetched song data')
     for result in results:
+        print(result)
         if result is not None:
             song_features, song_class = result
             features_list.append(song_features)
             classes_list.append(song_class)
+
 
     features_tensor = torch.tensor(features_list, dtype=torch.float32)
     classes_tensor = torch.tensor(classes_list)

@@ -45,12 +45,22 @@ $(document).ready(() => {
             } else {
                 await init_model(model_name);
                 localStorage.setItem("model_name", model_name);
-                location.reload()
+                // location.reload()
             }
         } catch (error) {
             console.error(error);
         }
     });
+
+    $("#add-new-examples").on("click", (e)=> {
+        e.preventDefault();
+        $("#recs").css('display', 'none');
+        $("#input-data").css('display', 'block');
+    })
+
+
+
+
 
     $("#show-recs").on("click", async (e) => {
         e.preventDefault();

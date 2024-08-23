@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from ml import *
 from utils.db_utils import *
 from utils.processing_utils import *
+from utils.spotify_api_utils import *
 import uvicorn
 
 # redis - use to store song information by id
@@ -81,26 +82,35 @@ def init_model(request: ModelRequest):
 @app.post("/train")
 async def train_endpoint(request: TrainRequest):
     try:
-        print("Starting data processing...")
+        print("Fetching request values...")
         model_name = request.model_name
         positive_data = request.positive_examples
         negative_data = request.negative_examples
 
+        print("Converting input into song ids...")
         positive_example_ids = raw_input_to_song_ids(positive_data)
         negative_example_ids = raw_input_to_song_ids(negative_data)
 
+        print("Combining and flagging ids...")
         example_ids_flagged = [(positive_example, 1) for positive_example in positive_example_ids] + [(negative_example, 0) for negative_example in negative_example_ids]
+        print("Converting ids to feature tensors...")
         features_tensor, classes_tensor = await song_ids_to_tensors(example_ids_flagged)
 
+        print("Getting the model associated with the user ...")
+        # made it here
         nn_model = get_nn_model(model_name)
+
+        print("Model succesfully gotten")
 
         if (nn_model is None):
             nn_model = init_nn_model(features_tensor)
             nn_model = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
         else:
             nn_model = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
+        print("model succesfully trained")
 
-        add_nn_model(nn_model, model_name)
+        #_issue is here
+        add_nn_model(model_name, nn_model)
 
         return  {"message": "Model trained successfully"}
     except Exception as e:

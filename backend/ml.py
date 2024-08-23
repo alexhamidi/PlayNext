@@ -12,7 +12,7 @@ class SongClassifier(nn.Module):
         self.linear_layer_2 = nn.Linear(8, n_classes)
 
     def forward(self, features):
-        x = torch.relpip3(self.linear_layer_1(features))
+        x = torch.relu(self.linear_layer_1(features))
         return self.linear_layer_2(x)
 
 def init_nn_model(train_data_features):

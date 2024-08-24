@@ -93,11 +93,11 @@ async def train_endpoint(request: TrainRequest):
 
         print("Combining and flagging ids...")
         example_ids_flagged = [(positive_example, 1) for positive_example in positive_example_ids] + [(negative_example, 0) for negative_example in negative_example_ids]
+
         print("Converting ids to feature tensors...")
         features_tensor, classes_tensor = await song_ids_to_tensors(example_ids_flagged)
 
         print("Getting the model associated with the user ...")
-        # made it here
         nn_model = get_nn_model(model_name)
 
         print("Model succesfully gotten")
@@ -109,7 +109,6 @@ async def train_endpoint(request: TrainRequest):
             nn_model = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
         print("model succesfully trained")
 
-        #_issue is here
         add_nn_model(model_name, nn_model)
 
         return  {"message": "Model trained successfully"}
@@ -121,16 +120,14 @@ if __name__ == "__main__":
     uvicorn.run("app:app", host="localhost", port=8040, reload=True)
 
 
-'''
+
 @app.get("/rec")
 async def train_endpoint(request: ModelRequest):
     try:
-        user_id = request.user_id
-        model = r.get(user_id)
-        if (model is None):
-            return "error: need to train the model first"
+        model_name = request.model_name
+        nn_model = get_nn_model(model_name)
+        # nn model must not be none
 
-        cached_ids = redis.cached_ids
 
         while (True):
             current_song_id = random.choice(cached_ids)
@@ -142,4 +139,4 @@ async def train_endpoint(request: ModelRequest):
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
-'''
+

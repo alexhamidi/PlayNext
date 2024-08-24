@@ -1,8 +1,8 @@
 import asyncio
 import aiohttp
 import torch
+import re
 from utils.spotify_api_utils import fetch_single_song_data
-
 
 
 async def song_ids_to_tensors(song_ids_flagged):
@@ -11,16 +11,21 @@ async def song_ids_to_tensors(song_ids_flagged):
 
     async with aiohttp.ClientSession() as session:
         tasks = [fetch_single_song_data(session, song_id_flagged) for song_id_flagged in song_ids_flagged]
-        results = await asyncio.gather(*tasks)
-    # completely off
-    print('succesfully fetched song data')
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    print('Successfully fetched song data')
     for result in results:
-        print(result)
-        if result is not None:
+        if isinstance(result, PermissionError):
+            raise RuntimeError("Permission error occurred. Invalid API Key") from result
+        elif isinstance(result, Exception):
+            print(f"Error processing song: {result}")
+        elif result is not None:
             song_features, song_class = result
             features_list.append(song_features)
             classes_list.append(song_class)
 
+    if not features_list:
+        raise ValueError("No valid song data was processed")
 
     features_tensor = torch.tensor(features_list, dtype=torch.float32)
     classes_tensor = torch.tensor(classes_list)
@@ -28,8 +33,11 @@ async def song_ids_to_tensors(song_ids_flagged):
     return features_tensor, classes_tensor
 
 def raw_input_to_song_ids(data):
-    ids = [url.split("/")[-1] for url in data.splitlines()]
+    pattern = r"^https://open\.spotify\.com/track/([a-zA-Z0-9]{22})$"
+    ids = []
+    for url in data.splitlines():
+        match = re.match(pattern, url)
+        if not match:
+            raise ValueError(f"Incorrect data format: {url}")
+        ids.append(match.group(1))
     return ids
-
-def ids_to_uris(ids):
-    return [f'https://open.spotify.com/track/{id}' for id in ids]

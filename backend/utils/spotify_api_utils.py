@@ -21,6 +21,10 @@ async def fetch_single_song_data(session, song_id_flagged):
             keys_to_keep = ['duration', 'loudness', 'tempo', 'time_signature', 'key', 'mode'] # needs to be a 2d list
             song_data_filtered = [float(track_data[k]) for k in keys_to_keep]
             return song_data_filtered, song_class
+        elif response.status == 401:
+            raise PermissionError(f"Incorrent API Key/invalid authorization")
+        elif response.status == 404:
+            raise FileNotFoundError(f"URL not found:{url}")
         else:
             print(f"Request failed for {song_id} with status code: {response.status}")
             return None

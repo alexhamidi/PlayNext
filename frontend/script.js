@@ -110,7 +110,14 @@ function init_model(model_name) {
                 resolve(response);
             },
             error: (xhr, status, error) => {
-                reject(new Error(`Error: ${error}, Status: ${status}`));
+                let errorMessage;
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    errorMessage = errorResponse.detail || error;
+                } catch (e) {
+                    errorMessage = error;
+                }
+                reject(new Error(`Error: ${errorMessage}, Status: ${status}`));
             }
         });
     });
@@ -128,7 +135,14 @@ function does_model_exist(model_name) {
                 resolve(response.exists);
             },
             error: (xhr, status, error) => {
-                reject(new Error(`Error: ${error}, Status: ${status}`));
+                let errorMessage;
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    errorMessage = errorResponse.detail || error;
+                } catch (e) {
+                    errorMessage = error;
+                }
+                reject(new Error(`Error: ${errorMessage}, Status: ${status}`));
             }
         });
     });
@@ -146,7 +160,14 @@ function is_model_trained(model_name) {
                 resolve(response.trained);
             },
             error: (xhr, status, error) => {
-                reject(new Error(`Error: ${error}, Status: ${status}`));
+                let errorMessage;
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    errorMessage = errorResponse.detail || error;
+                } catch (e) {
+                    errorMessage = error;
+                }
+                reject(new Error(`Error: ${errorMessage}, Status: ${status}`));
             }
         });
     });
@@ -169,7 +190,14 @@ function send_training_examples(positive_examples, negative_examples) {
                 resolve(response);
             },
             error: (xhr, status, error) => {
-                reject(new Error(`Error: ${error}, Status: ${status}`));
+                let errorMessage;
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    errorMessage = errorResponse.detail || error;
+                } catch (e) {
+                    errorMessage = error;
+                }
+                reject(new Error(`Error: ${errorMessage}, Status: ${status}`));
             }
         });
     });

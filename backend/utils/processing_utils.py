@@ -2,15 +2,21 @@ import asyncio
 import aiohttp
 import torch
 import re
-from utils.spotify_api_utils import fetch_single_song_data
+from utils.spotify_api_utils import *
 
+def test_song_id_to_tensor(song_id):
+    result = fetch_single_song_test_data(song_id)
+    if result is None:
+        print("data not processed properly")
+    feature_tensor = torch.tensor(result, dtype=torch.float32)
+    return feature_tensor
 
-async def song_ids_to_tensors(song_ids_flagged):
+async def train_song_ids_to_tensors(song_ids_flagged): # generalize t
     features_list = []
     classes_list = []
 
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch_single_song_data(session, song_id_flagged) for song_id_flagged in song_ids_flagged]
+        tasks = [fetch_single_song_train_data(session, song_id_flagged) for song_id_flagged in song_ids_flagged]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
     print('Successfully fetched song data')

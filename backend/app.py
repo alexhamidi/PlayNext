@@ -7,6 +7,8 @@ from utils.processing_utils import *
 from utils.spotify_api_utils import *
 import uvicorn
 
+NUM_RETRIES = 500
+
 # redis - use to store song information by id
 app = FastAPI()
 
@@ -18,23 +20,6 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-'''
-example: initial insert
-user = User(**{
-    "user_id": user_id,
-    "model": null"
-})
-
-example: getting the user
-user = User.find(
-    User.user_id == user_id
-).all()
-
-can use
-user.model
-
-and use user.save()
-'''
 
 class ModelRequest(BaseModel):
     model_name:str
@@ -80,7 +65,7 @@ def init_model(request: ModelRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/train")
-async def train_endpoint(request: TrainRequest):
+async def train(request: TrainRequest):
     try:
         print("Fetching request values...")
         model_name = request.model_name
@@ -95,7 +80,7 @@ async def train_endpoint(request: TrainRequest):
         example_ids_flagged = [(positive_example, 1) for positive_example in positive_example_ids] + [(negative_example, 0) for negative_example in negative_example_ids]
 
         print("Converting ids to feature tensors...")
-        features_tensor, classes_tensor = await song_ids_to_tensors(example_ids_flagged)
+        features_tensor, classes_tensor = await train_song_ids_to_tensors(example_ids_flagged)
 
         print("Getting the model associated with the user ...")
         nn_model = get_nn_model(model_name)
@@ -116,27 +101,37 @@ async def train_endpoint(request: TrainRequest):
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "__main__":
-    uvicorn.run("app:app", host="localhost", port=8040, reload=True)
-
-
-
 @app.get("/rec")
-async def train_endpoint(request: ModelRequest):
+async def rec(request: ModelRequest):
     try:
         model_name = request.model_name
         nn_model = get_nn_model(model_name)
         # nn model must not be none
-
-
-        while (True):
-            current_song_id = random.choice(cached_ids)
-            current_song_features = features.current_song_id
-            class_prediction = predict_single_example(model, current_song_features)
+        retries = 0
+        while retries < NUM_RETRIES:
+            retries += 1
+            current_song_id = get_random_song_id()
+            current_song_features_tensor = test_song_id_to_tensor(current_song_id)
+            class_prediction = predict_single_example(nn_model, current_song_features_tensor)
             if class_prediction == 1:
-                return current_song_id
-
+                return  {"message": "Rec retreived succesfully", "song_id":current_song_id}
+        raise Exception(f"no matches found for the model {model_name} after {NUM_RETRIES} attempts")
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/all_models")
+def all_models():
+    try:
+        all_model_names = get_all_model_names()
+        return  {"message": "Models retreived succesfully", "model_names":all_model_names}
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    uvicorn.run("app:app", host="localhost", port=8040, reload=True)
+
 

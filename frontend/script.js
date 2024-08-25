@@ -1,34 +1,24 @@
-$(document).ready(() => {
+$(document).ready(async() => {
+//getting the number of training examples will remove the need for a trained chec, everything can be stored in local storage
+
+
+    /*****************************
+    CHECK IF THE MODEL IS CHOSEN
+    *****************************/
     const model_name = localStorage.getItem("model_name");
     if (model_name != null) {
         $('#model-chosen').css("display", "block");
         $('#model-name').text(model_name);
         $('#model-not-chosen').css("display", "none");
     } else {
+        await load_model_options()
         $('#model-not-chosen').css("display", "block");
         $('#model-chosen').css("display", "none");
     }
 
-    $("#existing-model-form").on("submit", async (e) => {
-        e.preventDefault();
-        const model_name = $("#existing-model-input").val();
-        if (model_name === '') {
-            console.log('need to input')
-            return;
-        }
-        try {
-            const model_exists = await does_model_exist(model_name);
-            if (model_exists) {
-                localStorage.setItem("model_name", model_name);
-                location.reload()
-            } else {
-                console.log('model does not exist with that name');
-            }
-        } catch (error) {
-            console.error(error);
-        }
-    });
-
+    /*****************************
+    ADD A NEW MODEL AND SELECT IT
+    *****************************/
     $("#new-model-form").on("submit", async (e) => {
         e.preventDefault();
         const model_name = $("#new-model-input").val();
@@ -45,23 +35,25 @@ $(document).ready(() => {
             } else {
                 await init_model(model_name);
                 localStorage.setItem("model_name", model_name);
-                // location.reload()
+                location.reload()
             }
         } catch (error) {
             console.error(error);
         }
     });
 
+    /*****************************
+    TOGGLE NEW EXAMPLES SCREEN
+    *****************************/
     $("#add-new-examples").on("click", (e)=> {
         e.preventDefault();
         $("#recs").css('display', 'none');
         $("#input-data").css('display', 'block');
     })
 
-
-
-
-
+    /*****************************
+    TOGGLE REC SCREEN
+    *****************************/
     $("#show-recs").on("click", async (e) => {
         e.preventDefault();
         const model_name = localStorage.getItem("model_name");
@@ -79,6 +71,9 @@ $(document).ready(() => {
         }
     });
 
+    /*******************************
+    HANDLE SUBMISSION OF TRAIN SONGS
+    *******************************/
     $("#song-form").on("submit", async (e) => {
         e.preventDefault();
         const positive_examples = $("#positive-examples-input").val();
@@ -96,8 +91,68 @@ $(document).ready(() => {
     })
 
 });
+/*******************************
+JS UTILITY FUNCTIONS
+*******************************/
 
-// Update these functions to return promises
+async function load_model_options() {
+    model_options = await get_all_model_names()
+    console.log(model_options)
+    if (model_options.length === 0) {
+        $('<p>')
+        .text('no models exist here (yet)')
+        .appendTo('#existing-area')
+    } else {
+        $('<form>')
+            .append(
+                $('<select>')
+                .attr('id', 'model-select')
+                .attr('name', 'model-select')
+                .append(
+                    $('<option>')
+                    .text('select a model')
+                    .attr('value', "")
+                )
+            )
+            .appendTo('#existing-area')
+        $.each(model_options, (index, option) => {
+            console.log(option)
+            $('<option>')
+            .attr('value', option)
+            .text(option)
+            .appendTo('#model-select')
+        })
+    }
+}
+
+/*******************************
+API REQUESTS
+*******************************/
+
+function get_all_model_names() {
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            url: 'http://localhost:8040/all_models',
+            method: 'GET',
+            contentType: 'application/json',
+            success: (response) => {
+                console.log(response.message);
+                resolve(response.model_names);
+            },
+            error: (xhr, status, error) => {
+                let errorMessage;
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    errorMessage = errorResponse.detail || error;
+                } catch (e) {
+                    errorMessage = error;
+                }
+                reject(new Error(`Error: ${errorMessage}, Status: ${status}`));
+            }
+        });
+    });
+}
+
 function init_model(model_name) {
     return new Promise((resolve, reject) => {
         $.ajax({

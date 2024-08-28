@@ -4,8 +4,13 @@ import torch
 import re
 from utils.spotify_api_utils import *
 
+TRACK_URL = 'https://open.spotify.com/track'
+TRACK_PATTERN = r"^https://open\.spotify\.com/track/([a-zA-Z0-9]{22})$"
+
 def test_song_id_to_tensor(song_id):
-    result = fetch_single_song_test_data(song_id)
+    print('fetching single song data:')
+    result = fetch_single_song_test_data(song_id) # problem here
+    print('song data: ', result)
     if result is None:
         print("data not processed properly")
     feature_tensor = torch.tensor(result, dtype=torch.float32)
@@ -38,12 +43,15 @@ async def train_song_ids_to_tensors(song_ids_flagged): # generalize t
 
     return features_tensor, classes_tensor
 
-def raw_input_to_song_ids(data):
-    pattern = r"^https://open\.spotify\.com/track/([a-zA-Z0-9]{22})$"
+def raw_input_to_song_ids(uris):
     ids = []
-    for url in data.splitlines():
-        match = re.match(pattern, url)
+    for uri in uris:
+        match = re.match(TRACK_PATTERN, uri)
         if not match:
-            raise ValueError(f"Incorrect data format: {url}")
+            raise ValueError(f"Incorrect data format: {uri}")
         ids.append(match.group(1))
     return ids
+
+
+def convert_song_id_to_uri(song_id):
+    return TRACK_URL + '/' + song_id

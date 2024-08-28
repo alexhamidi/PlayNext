@@ -1,6 +1,7 @@
 import torch
 import io
-from ml import SongClassifier
+from utils.nn_model import SongClassifier
+from utils.spotify_api_utils import KEYS_TO_USE
 from redis_om import Field, HashModel, Migrator, NotFoundError, get_redis_connection
 import warnings
 warnings.filterwarnings("ignore", message="Field .* has conflict with protected namespace .*")
@@ -27,13 +28,16 @@ mdb_r = redis.Redis(
 class Model(HashModel):
     model_name: str = Field(index=True)
     nn_model_serialized: str = Field(default='')  # Store as base64 encoded string
-    # big todo - num_songs_trained
+    num_songs: int = Field(default = 0)
     class Meta:
         database = mdb_rom # any operations will default to this dataabse
         global_key_prefix = ""
 Migrator().run()
 
 def add_model(model_name):
+    existing_model = get_model(model_name)
+    if (existing_model is not None):
+        raise Exception('Error: model already exists with this name')
     model = Model(model_name=model_name)
     model.save()
 
@@ -42,6 +46,11 @@ def get_model(model_name):
         return Model.find(Model.model_name == model_name).first()
     except NotFoundError:
         return None
+
+def update_num_songs(model_name, num_new_songs):
+    model = get_model(model_name)
+    model.num_songs += num_new_songs
+    model.save()
 
 def add_nn_model(model_name, nn_model):
     print("Function called: add_nn_model")
@@ -73,27 +82,30 @@ def add_nn_model(model_name, nn_model):
 
 def get_nn_model(model_name):
     model = get_model(model_name)
+    num_songs = model.num_songs
     nn_model_base64 = model.nn_model_serialized
     if nn_model_base64 == '':
         print("nn_model is none")
         return None
     try:
         print("model is not none")
+        num_features = len(KEYS_TO_USE)
+        num_classes = 2
         # Decode the base64 encoded serialized model
         nn_model_serialized = base64.b64decode(nn_model_base64.encode('ascii'))
         buffer = io.BytesIO(nn_model_serialized)
-        state_dict = torch.load(buffer)
-        nn_model = SongClassifier()
+        state_dict = torch.load(buffer, weights_only=True)
+        nn_model = SongClassifier(n_features=num_features, n_classes=num_classes) # problem here
         nn_model.load_state_dict(state_dict)
         return nn_model
     except Exception as e:
         print(f"Error deserializing model: {e}")
         return None
 
-def get_all_model_names():
+def get_all_models_and_num_songs():
     pattern = ':utils.db_utils.Model:*'
     cursor = -1
-    model_names = []
+    models = []  # Change this to a list instead of a dictionary
 
     while cursor != 0:
         cursor += cursor == -1
@@ -101,11 +113,14 @@ def get_all_model_names():
         for key in keys:
             if mdb_r.type(key) == 'hash':
                 model_data = mdb_r.hgetall(key)
-                model_name = model_data.get('model_name', None)
-                if model_name:
-                    model_names.append(model_name)
-
-    return model_names
+                model_name = model_data.get('model_name')
+                model_num_songs = int(model_data.get('num_songs', -1))  # Assuming 'num_songs' is the correct key
+                if model_name is not None and model_num_songs != -1:
+                    models.append({
+                        "name": model_name,
+                        "numSongs": model_num_songs
+                    })
+    return models
 
 '''''''''''''''''''''''''''''
 SONG_UTILS
@@ -123,23 +138,10 @@ HASH_KEY = "song_ids"
 COUNT_KEY = "num_song_ids"
 
 def get_random_song_id():
-    song_count = int(sdb.get(COUNT_KEY))
+    print('called randomizer')
+    song_count = int(sdb.get(COUNT_KEY)) # error in this linee
+    print('end randomizer call')
     random_index = random.randint(0, song_count - 1)
     result_as_bytes = sdb.hget(HASH_KEY, random_index)
     return result_as_bytes.decode('utf-8')
-
-def list_all_db_items(db):
-    r = redis.Redis(host='localhost', port=6379, db=db)
-    keys = r.keys()
-    for key in keys:
-        key_type = r.type(key).decode('utf-8')
-        print(f"Key: {key.decode('utf-8')}, Type: {key_type}")
-        if key_type == 'hash':
-            data = r.hgetall(key)
-            for field, value in data.items():
-                print(f"  {field.decode('utf-8')}: {value.decode('utf-8')}")
-        elif key_type == 'string':
-            value = r.get(key)
-            print(f"  Value: {value.decode('utf-8')}")
-
 

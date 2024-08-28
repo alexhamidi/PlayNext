@@ -7,7 +7,6 @@ from utils.processing_utils import *
 from utils.spotify_api_utils import *
 import uvicorn
 
-NUM_RETRIES = 500
 
 # redis - use to store song information by id
 app = FastAPI()
@@ -25,39 +24,25 @@ class ModelRequest(BaseModel):
     model_name:str
 
 class TrainRequest(BaseModel):
-    positive_examples: str
-    negative_examples: str
+    positive_examples:  list[str]
+    negative_examples: list[str]
     model_name:str
 
 # maybe dont even need to interface with the db here - only in utils
 
-@app.post("/model_exists")
-def model_exists(request: ModelRequest):
+@app.get("/models")
+def get_models():
     try:
-        model_name = request.model_name
-        model = get_model(model_name)
-        exists = model is not None
-        return {"exists": exists, "message": "Existence checked successfully"}
-    except Exception as e:
+        models = get_all_models_and_num_songs()
+        return  {"message": "Models retreived succesfully", "models":models}
+    except Exception as e: # be more descriptive - conflict
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/model_trained")
-def model_trained(request: ModelRequest):
-    try:
-        model_name = request.model_name
-        nn_model = get_nn_model(model_name)
-        trained = nn_model is not None
-        return {"trained": trained, "message": "trainedness checked successfully"}
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/init_model")
+@app.post("/models")
 def init_model(request: ModelRequest):
     try:
         model_name = request.model_name
-        print(model_name)
         add_model(model_name)
         return {"message": "Model Initialized successfully"}
     except Exception as e:
@@ -65,7 +50,7 @@ def init_model(request: ModelRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/train")
-async def train(request: TrainRequest):
+async def train_model(request: TrainRequest):
     try:
         print("Fetching request values...")
         model_name = request.model_name
@@ -88,12 +73,12 @@ async def train(request: TrainRequest):
         print("Model succesfully gotten")
 
         if (nn_model is None):
-            nn_model = init_nn_model(features_tensor)
-            nn_model = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
+            nn_model = init_nn_model()
+            nn_model, num_new_songs = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
         else:
-            nn_model = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
-        print("model succesfully trained")
+            nn_model, num_new_songs = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
 
+        update_num_songs(model_name, num_new_songs)
         add_nn_model(model_name, nn_model)
 
         return  {"message": "Model trained successfully"}
@@ -101,34 +86,30 @@ async def train(request: TrainRequest):
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/rec")
-async def rec(request: ModelRequest):
+@app.post("/recommendation")
+async def get_recommendation(request: ModelRequest):
     try:
         model_name = request.model_name
+        print('model_name: ', model_name)
+
+        # this is not being executed properly
         nn_model = get_nn_model(model_name)
-        # nn model must not be none
-        retries = 0
-        while retries < NUM_RETRIES:
-            retries += 1
-            current_song_id = get_random_song_id()
-            current_song_features_tensor = test_song_id_to_tensor(current_song_id)
-            class_prediction = predict_single_example(nn_model, current_song_features_tensor)
-            if class_prediction == 1:
-                return  {"message": "Rec retreived succesfully", "song_id":current_song_id}
-        raise Exception(f"no matches found for the model {model_name} after {NUM_RETRIES} attempts")
+
+        # error here
+        predicted_id = get_single_song_prediction(nn_model)
+
+        print('predicted id: ', predicted_id)
+        # something is happening here
+        if predicted_id is None:
+            raise Exception(f"no matches found for the model {model_name} after {NUM_RETRIES} attempts")
+        else:
+            predicted_uri = convert_song_id_to_uri(predicted_id)
+            print('predicted_uri:', predicted_uri)
+        return {"message": "Prediction retreived successfully", "predicted_uri":predicted_uri}
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.get("/all_models")
-def all_models():
-    try:
-        all_model_names = get_all_model_names()
-        return  {"message": "Models retreived succesfully", "model_names":all_model_names}
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

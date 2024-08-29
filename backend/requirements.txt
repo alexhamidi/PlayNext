@@ -1,0 +1,11 @@
+pip3 install
+
+torch
+redis
+redis-om
+fastapi
+python-dotenv
+uvicorn
+aiohttp
+numpy
+pydantic

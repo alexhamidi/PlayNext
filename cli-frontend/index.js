@@ -11,7 +11,7 @@ import readline from 'readline'
 
 
 //=============================================================================================
-const sleep = (ms = 1000) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms = 2000) => new Promise((r) => setTimeout(r, ms));
 let currentModelData = null
 const appState = {
     currentModel: null,
@@ -23,15 +23,18 @@ const BACKEND_URL = 'http://localhost:8040'
 
 
 //=============================================================================================
-
+console.clear()
 await welcome()
+console.clear()
 await initializeModels(true)
+console.clear()
 await askModelMultiple()
-
 //event loop?
 while (true) {
-    await displayCurrentData()
+    resetScreenWithData()
     await displayPrimaryActions()
+    sleep()
+    await pressAnyKeyToContinue()
 }
 
 
@@ -40,6 +43,11 @@ while (true) {
 
 
 //=============================================================================================
+
+async function resetScreenWithData() {
+    console.clear()
+    await displayCurrentData()
+}
 
 async function updateCurrentModelData() {
     currentModelData = appState.models.find(model => model.name === appState.currentModel);
@@ -111,18 +119,38 @@ async function displayPrimaryActions() {
         choices.push('train through individual recommendations')
         choices.push('get bulk recommendations')
     }
+    choices.push('end the program');
     const answer = await inquirer.prompt({
         name: 'action_choice',
         type: 'list',
-        message: 'Now, you can train your model or get recommendations if it had been already trained. ',
+        message: '',
         choices: choices
     });
+    await resetScreenWithData()
     const action_choice = answer.action_choice;
-    if (action_choice === 'train the model') {
-        await handleTrainModel();
-    } else {
-        await handleGetRecs(); // two types: round by round or bulk
+    switch (action_choice) {
+        case 'train the model':await handleTrainModel();
+            break;
+        case 'train through individual recommendations':await handleGetSingleRec()
+            break;
+        case 'get bulk recommendations': await handleGetBulkRecs()
+            break;
+        case 'end the program':
+            console.clear();
+            process.exit(1);
+            break;
     }
+}
+
+async function handleGetBulkRecs() {
+    const answer = await inquirer.prompt({
+        name: 'num_recommendations',
+        type: 'input',
+        message: 'How many recommendations would you like?',
+    });
+    const num_recommendations = answer.num_recommendations;
+    const bulk_recs = await getBulkRecs(num_recommendations);
+    console.log(`Bulk request successful. Here are your predictions:\n${bulk_recs.map(rec => `${rec}`).join('\n')}`);
 }
 
 
@@ -158,12 +186,12 @@ async function getTrainingInput(isPositive) { // alternate way of readubg input 
 }
 
 
-async function handleGetRecs() {
+async function handleGetSingleRec() {
     const recommendation_uri = await getSingleRec()
-    await handleRecFeedBack(recommendation_uri)
+    await handleSingleRecFeedBack(recommendation_uri)
 }
 
-async function handleRecFeedBack(recommendation_uri) {
+async function handleSingleRecFeedBack(recommendation_uri) {
     const answer = await inquirer.prompt({
         name: 'rec_feedback',
         type: 'list',
@@ -177,6 +205,21 @@ async function handleRecFeedBack(recommendation_uri) {
     const positiveExamples = rec_feedback_positive ? [recommendation_uri] : []
     sendTrainingExamples(positiveExamples, negativeExamples)
     console.log('recommendations tuned succesfully!')
+}
+
+async function getBulkRecs(num_recommendations) {
+    try {
+        console.log('getting recommendation')
+        const response = await axios.post(`${BACKEND_URL}/recommendations`, {
+            model_name: currentModelData.name,
+            num_recommendations: num_recommendations
+        })
+        const predicted_uris = response.data.predicted_uris
+        return predicted_uris
+    } catch (error) {
+        console.error(chalk.red('Error retreiving recommendation', error.message));
+        process.exit(1)
+    }
 }
 
 async function getSingleRec() {
@@ -233,3 +276,13 @@ async function initModel(modelName) {
 
 
 
+async function pressAnyKeyToContinue() {
+    await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'continue',
+        message: 'Press any key to continue...',
+        validate: () => true, // Automatically accept any input
+      }
+    ]);
+  }

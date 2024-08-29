@@ -12,5 +12,7 @@ populating
 songids.txt
 testing.py
 db_view.py
-node_modules
 frontend
+node_modules
+
+# why not working

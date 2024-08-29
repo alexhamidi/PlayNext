@@ -23,6 +23,10 @@ app.add_middleware(
 class ModelRequest(BaseModel):
     model_name:str
 
+class BulkRequest(BaseModel):
+    model_name:str
+    num_recommendations:int
+
 class TrainRequest(BaseModel):
     positive_examples:  list[str]
     negative_examples: list[str]
@@ -100,12 +104,29 @@ async def get_recommendation(request: ModelRequest):
 
         print('predicted id: ', predicted_id)
         # something is happening here
-        if predicted_id is None:
-            raise Exception(f"no matches found for the model {model_name} after {NUM_RETRIES} attempts")
-        else:
-            predicted_uri = convert_song_id_to_uri(predicted_id)
-            print('predicted_uri:', predicted_uri)
+        predicted_uri = convert_song_id_to_uri(predicted_id)
+        print('predicted_uri:', predicted_uri)
+
         return {"message": "Prediction retreived successfully", "predicted_uri":predicted_uri}
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/recommendations")
+async def get_recommendations(request: BulkRequest):
+    try:
+        model_name = request.model_name
+        num_recommendations = request.num_recommendations
+
+        # this is not being executed properly
+        nn_model = get_nn_model(model_name)
+
+        # error here
+        predicted_ids = get_multiple_song_predictions(nn_model, num_recommendations)
+        predicted_uris = convert_song_ids_to_uris(predicted_ids)
+
+        print('predicted_uri:', predicted_uris)
+        return {"message": "Prediction retreived successfully", "predicted_uris":predicted_uris}
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))

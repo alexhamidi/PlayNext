@@ -55,3 +55,6 @@ def raw_input_to_song_ids(uris):
 
 def convert_song_id_to_uri(song_id):
     return TRACK_URL + '/' + song_id
+
+def convert_song_ids_to_uris(song_ids):
+    return [convert_song_id_to_uri(song_id) for song_id in song_ids]

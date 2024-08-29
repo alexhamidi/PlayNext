@@ -9,7 +9,7 @@ from utils.processing_utils import test_song_id_to_tensor
 from utils.nn_model import SongClassifier
 
 
-NUM_RETRIES = 500
+NUM_RETRIES = 10
 POSITIVE_THRESHOLD = .7
 
 class SongClassifier(nn.Module):
@@ -71,15 +71,28 @@ def classify_single_example(nn_model, test_data_features):
 def get_single_song_prediction(nn_model):
     predicted_id = None
     retries = 0
-    while retries < NUM_RETRIES and predicted_id is None:
+    for _ in range(NUM_RETRIES): # this isnt qorking out
         retries += 1
         current_song_id = get_random_song_id()
         print(current_song_id) #
         current_song_features_tensor = test_song_id_to_tensor(current_song_id) # error here
         print(current_song_features_tensor)
-        class_prediction = classify_single_example(nn_model, current_song_features_tensor) # error now here
+        class_prediction = classify_single_example(nn_model, current_song_features_tensor) # problem - not choosy enough
+        print(class_prediction)
         if class_prediction == 1:
             predicted_id = current_song_id
+            break
+    if predicted_id is None:
+        raise Exception(f"no matches found for the model after {NUM_RETRIES} attempts")
+    else:
+        return predicted_id
 
-    return predicted_id
 
+
+def get_multiple_song_predictions(nn_model, num_recommendations):
+    predicted_ids = []
+    while len(predicted_ids) < num_recommendations:
+        predicted_id = get_single_song_prediction(nn_model)
+        predicted_ids.append(predicted_id)
+
+    return predicted_ids

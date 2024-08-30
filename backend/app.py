@@ -1,14 +1,20 @@
-from fastapi import FastAPI, HTTPException
+
+#=======================================================================#
+# IMPORTS
+#=======================================================================#
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ml import *
-from utils.db_utils import *
-from utils.processing_utils import *
-from utils.spotify_api_utils import *
+from utils.model_db_utils import get_all_models_and_num_songs, add_model, get_nn_model, add_nn_model, update_num_songs
+from utils.processing_utils import raw_input_to_song_ids, song_ids_to_feature_tensors, convert_song_ids_to_uris
+from utils.prediction_utils import get_song_predictions
+from utils.app_utils import api_handler
 import uvicorn
 
-
-# redis - use to store song information by id
+#=======================================================================#
+# CONFIGURE THE APP AND CORS
+#=======================================================================#
 app = FastAPI()
 
 app.add_middleware(
@@ -19,7 +25,9 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-
+#=======================================================================#
+# DECLARE REQUEST TYPES
+#=======================================================================#
 class ModelRequest(BaseModel):
     model_name:str
 
@@ -32,105 +40,87 @@ class TrainRequest(BaseModel):
     negative_examples: list[str]
     model_name:str
 
-# maybe dont even need to interface with the db here - only in utils
-
+#=======================================================================#
+# GET /models: returns the model_names and num_songs of all db models.
+#=======================================================================#
 @app.get("/models")
-def get_models():
-    try:
-        models = get_all_models_and_num_songs()
-        return  {"message": "Models retreived succesfully", "models":models}
-    except Exception as e: # be more descriptive - conflict
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))
+@api_handler("GET", "models")
+async def get_models():
 
+    print('Retrieving all models...')
+    models = get_all_models_and_num_songs()
+    print('Models:', models)
+
+    return  {"message": "Models retreived succesfully", "models":models}
+
+#=======================================================================#
+# POST /models: takes a new model name and adds it to the database
+#=======================================================================#
 @app.post("/models")
+@api_handler("POST", "models")
 def init_model(request: ModelRequest):
-    try:
-        model_name = request.model_name
-        add_model(model_name)
-        return {"message": "Model Initialized successfully"}
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))
+    model_name = request.model_name
 
+    print(f"Adding model {model_name}...")
+    add_model(model_name)
+
+    return {"message": "Model Initialized successfully"}
+
+#=======================================================================#
+# POST /train: takes a model name and positive and negative training
+# examples associated with it and trains the model
+#=======================================================================#
 @app.post("/train")
+@api_handler("POST", "train")
 async def train_model(request: TrainRequest):
-    try:
-        print("Fetching request values...")
-        model_name = request.model_name
-        positive_data = request.positive_examples
-        negative_data = request.negative_examples
+    model_name = request.model_name
+    positive_data = request.positive_examples
+    negative_data = request.negative_examples
 
-        print("Converting input into song ids...")
-        positive_example_ids = raw_input_to_song_ids(positive_data)
-        negative_example_ids = raw_input_to_song_ids(negative_data)
+    print("Converting input into song ids...")
+    positive_example_ids = raw_input_to_song_ids(positive_data)
+    negative_example_ids = raw_input_to_song_ids(negative_data)
 
-        print("Combining and flagging ids...")
-        example_ids_flagged = [(positive_example, 1) for positive_example in positive_example_ids] + [(negative_example, 0) for negative_example in negative_example_ids]
+    print('Converting data into lists...')
+    train_ids = positive_example_ids + negative_example_ids
+    train_classes = [1] * len(positive_example_ids) + [0] * len(negative_example_ids)
 
-        print("Converting ids to feature tensors...")
-        features_tensor, classes_tensor = await train_song_ids_to_tensors(example_ids_flagged)
+    print("Converting ids to feature tensors...")
+    features_tensor, classes_tensor = await song_ids_to_feature_tensors(train_ids, False, classes=train_classes)
 
-        print("Getting the model associated with the user ...")
-        nn_model = get_nn_model(model_name)
+    print("Getting the model associated with the user ...")
+    nn_model = get_nn_model(model_name) or init_nn_model()
 
-        print("Model succesfully gotten")
+    print('Training nn model...')
+    nn_model, num_new_songs = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
 
-        if (nn_model is None):
-            nn_model = init_nn_model()
-            nn_model, num_new_songs = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
-        else:
-            nn_model, num_new_songs = train_nn_model(nn_model, features_tensor, classes_tensor, 100, .001)
+    print('Updating the number of songs the model has been trained on in the DB...')
+    update_num_songs(model_name, num_new_songs)
 
-        update_num_songs(model_name, num_new_songs)
-        add_nn_model(model_name, nn_model)
+    print('Adding the updated nn_model to the DB...')
+    add_nn_model(model_name, nn_model)
 
-        return  {"message": "Model trained successfully"}
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"message": "Model trained successfully"}
 
-@app.post("/recommendation")
-async def get_recommendation(request: ModelRequest):
-    try:
-        model_name = request.model_name
-        print('model_name: ', model_name)
-
-        # this is not being executed properly
-        nn_model = get_nn_model(model_name)
-
-        # error here
-        predicted_id = get_single_song_prediction(nn_model)
-
-        print('predicted id: ', predicted_id)
-        # something is happening here
-        predicted_uri = convert_song_id_to_uri(predicted_id)
-        print('predicted_uri:', predicted_uri)
-
-        return {"message": "Prediction retreived successfully", "predicted_uri":predicted_uri}
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))
-
+#=======================================================================#
+# POST /recommendations: Returns a given number of positive examples.
+#=======================================================================#
 @app.post("/recommendations")
+@api_handler("POST", "recommendations")
 async def get_recommendations(request: BulkRequest):
-    try:
-        model_name = request.model_name
-        num_recommendations = request.num_recommendations
+    model_name = request.model_name
+    num_recommendations = request.num_recommendations
 
-        # this is not being executed properly
-        nn_model = get_nn_model(model_name)
+    print("Getting the model associated with the user ...")
+    nn_model = get_nn_model(model_name)
 
-        # error here
-        predicted_ids = get_multiple_song_predictions(nn_model, num_recommendations)
-        predicted_uris = convert_song_ids_to_uris(predicted_ids)
+    print(f"Getting the {num_recommendations} predicted ids")
+    predicted_ids = await get_song_predictions(nn_model, num_recommendations)
 
-        print('predicted_uri:', predicted_uris)
-        return {"message": "Prediction retreived successfully", "predicted_uris":predicted_uris}
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))
+    print("Parsing the ids into utis")
+    predicted_uris = convert_song_ids_to_uris(predicted_ids)
 
+    return {"message": "Prediction retreived successfully", "predicted_uris":predicted_uris}
 
 
 if __name__ == "__main__":

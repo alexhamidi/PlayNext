@@ -1,48 +1,52 @@
+#=======================================================================#
+# IMPORTS
+#=======================================================================#
 import asyncio
 import aiohttp
 import torch
 import re
 from utils.spotify_api_utils import *
+from global_constants import TRACK_URL, TRACK_PATTERN
 
-TRACK_URL = 'https://open.spotify.com/track'
-TRACK_PATTERN = r"^https://open\.spotify\.com/track/([a-zA-Z0-9]{22})$"
-
-def test_song_id_to_tensor(song_id):
-    print('fetching single song data:')
-    result = fetch_single_song_test_data(song_id) # problem here
-    print('song data: ', result)
-    if result is None:
-        print("data not processed properly")
-    feature_tensor = torch.tensor(result, dtype=torch.float32)
-    return feature_tensor
-
-async def train_song_ids_to_tensors(song_ids_flagged): # generalize t
-    features_list = []
-    classes_list = []
-
+#=======================================================================#
+# async def song_ids_to_feature_tensors(song_ids, is_test, classes=None):
+# always returns 2 tensors. The first will always be the feature tensors
+# associated with the ids. If it is in test mode, it will return the song
+# ids as well, if it is in train mode, it will return classes (labels).
+#=======================================================================#
+async def song_ids_to_feature_tensors(song_ids, is_test, classes=None):
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch_single_song_train_data(session, song_id_flagged) for song_id_flagged in song_ids_flagged]
+        tasks = [fetch_single_song_data(session, song_id) for song_id in song_ids]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
     print('Successfully fetched song data')
-    for result in results:
+
+    valid_results = []
+    for i, result in enumerate(results):
         if isinstance(result, PermissionError):
             raise RuntimeError("Permission error occurred. Invalid API Key") from result
-        elif isinstance(result, Exception):
-            print(f"Error processing song: {result}")
         elif result is not None:
-            song_features, song_class = result
-            features_list.append(song_features)
-            classes_list.append(song_class)
+            valid_results.append((i, result))
 
-    if not features_list:
+    if not valid_results:
         raise ValueError("No valid song data was processed")
 
-    features_tensor = torch.tensor(features_list, dtype=torch.float32)
-    classes_tensor = torch.tensor(classes_list)
+    features_list = [result for _, result in valid_results] # all song ids
+    features_tensor = torch.tensor(features_list, dtype=torch.float32) # convert
 
-    return features_tensor, classes_tensor
+    if is_test:
+        classes_list = [classes[i] for i, _ in valid_results]
+        classes_tensor = torch.tensor(classes_list)
+        return features_tensor, classes_tensor
+    else:
+        processed_song_ids = [song_ids[i] for i, _ in valid_results]
+        song_ids_tensor = torch.tensor(processed_song_ids)
+        return features_tensor, song_ids_tensor
 
+#=======================================================================#
+# def raw_input_to_song_ids(uris): converts a list of uris to a list of
+# ids
+#=======================================================================#
 def raw_input_to_song_ids(uris):
     ids = []
     for uri in uris:
@@ -52,9 +56,8 @@ def raw_input_to_song_ids(uris):
         ids.append(match.group(1))
     return ids
 
-
-def convert_song_id_to_uri(song_id):
-    return TRACK_URL + '/' + song_id
-
+#=======================================================================#
+# Returns a list of song ids converted to track uris
+#=======================================================================#
 def convert_song_ids_to_uris(song_ids):
-    return [convert_song_id_to_uri(song_id) for song_id in song_ids]
+    return [TRACK_URL + '/' + song_id for song_id in song_ids]

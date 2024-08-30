@@ -1,8 +1,10 @@
-from global_constants import API_KEY, AUDIO_URL, KEYS_TO_USE
+from global_constants import AUDIO_URL, KEYS_TO_USE
+from app import token_manager
 
-async def fetch_single_song_data(session, song_id):
+async def fetch_single_song_data(session, song_id,):
+    token = token_manager.get_token()
     url = f"{AUDIO_URL}{song_id}"
-    headers = {"Authorization": f"Bearer {API_KEY}"}
+    headers = {"Authorization": f"Bearer {token}"}
     async with session.get(url, headers=headers) as response:
         if response.status == 200:
             song_data = await response.json()

@@ -14,9 +14,9 @@ from global_constants import TRACK_URL, TRACK_PATTERN
 # associated with the ids. If it is in test mode, it will return the song
 # ids as well, if it is in train mode, it will return classes (labels).
 #=======================================================================#
-async def song_ids_to_feature_tensors(song_ids, is_test, classes=None):
+async def song_ids_to_feature_tensors(song_ids, is_test, token, classes=None):
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch_single_song_data(session, song_id) for song_id in song_ids]
+        tasks = [fetch_single_song_data(session, song_id, token) for song_id in song_ids]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
     print('Successfully fetched song data')

@@ -2,8 +2,11 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
-# SPOTIFY
-API_KEY = os.getenv("API_KEY")
+#SPOTIFY AUTH
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+
+#SPOTIFY REQS
 AUDIO_URL = "https://api.spotify.com/v1/audio-analysis/"
 KEYS_TO_USE = ['duration', 'loudness', 'tempo', 'time_signature', 'key', 'mode']
 

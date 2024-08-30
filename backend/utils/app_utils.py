@@ -9,7 +9,6 @@ def api_handler(method: str, endpoint: str):
                 print(f"{method} call made to /{endpoint}")
                 response = await func(*args, **kwargs)
                 print(f"{method} call to /{endpoint} successfully completed")
-
                 return response
             except Exception as e:
                 print(e)

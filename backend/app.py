@@ -10,6 +10,9 @@ from utils.model_db_utils import get_all_models_and_num_songs, add_model, get_nn
 from utils.processing_utils import raw_input_to_song_ids, song_ids_to_feature_tensors, convert_song_ids_to_uris
 from utils.prediction_utils import get_song_predictions
 from utils.app_utils import api_handler
+from tokenmanager import TokenManager
+from global_constants import CLIENT_ID, CLIENT_SECRET
+
 import uvicorn
 
 #=======================================================================#
@@ -24,6 +27,8 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+token_manager = TokenManager(CLIENT_ID, CLIENT_SECRET)
 
 #=======================================================================#
 # DECLARE REQUEST TYPES

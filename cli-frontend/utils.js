@@ -13,14 +13,18 @@ export async function pressAnyKeyToContinue() {
 }
 
 export async function handleApiCall(apiFunction, successMessage, failureMessage, ...args) {
-    try {
-        const response = await apiFunction(...args);
-        console.log(chalk.green(successMessage));
-        return response; // Return response if needed for further processing
-    } catch (error) {
-        console.error(chalk.red(failureMessage, error.message));
-        process.exit(1); // Exit on failure
-    }
+  try {
+      const response = await apiFunction(...args);
+      console.log(chalk.green(successMessage));
+      return response;
+  } catch (error) {
+      if (error.response.status === 409) {
+          return error.response;
+      } else {
+          console.error(chalk.red(failureMessage, error.message));
+          process.exit(1)
+      }
+  }
 }
 
 

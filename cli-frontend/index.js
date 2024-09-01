@@ -246,68 +246,9 @@ async function handleDeleteModel() {
 // TRAIN THE MODEL WITH BULK TEXT INPUT
 //=============================================================================================
 async function handleTrainModel() {
-    const positive_examples_input = ['https://open.spotify.com/track/5lrorOJfDv5rGUKqLDKqo8',
-    'https://open.spotify.com/track/54Slt61Sh0r2q7ml15VJYo',
-    'https://open.spotify.com/track/7b1lzMZH5pVv4Fz8iySoxc',
-    'https://open.spotify.com/track/0XYTwge3I57qw6bj6zXBUO',
-    'https://open.spotify.com/track/1jKXjxMWlq4BhH6f9GtZbu',
-    'https://open.spotify.com/track/6xZYGIixR3zhhOHwu7UEMY',
-    'https://open.spotify.com/track/0Ll6cuXMUPWzouvFLQRXlT',
-    'https://open.spotify.com/track/6ovJ4vtrLdONeRoTT4s4uw',
-    'https://open.spotify.com/track/2mMYw1jK3oJTrDuNI4qOW5',
-    'https://open.spotify.com/track/7zCVvmyZj2FPCHZ1nVdB3p',
-    'https://open.spotify.com/track/4b7vk8SRcYgnxpk0JOIS7r',
-    'https://open.spotify.com/track/2jJIxT6WAIVWzDo3Ou53Q0',
-    'https://open.spotify.com/track/4Gd6yYZtA0U0fQbphXZGWI',
-    'https://open.spotify.com/track/1JgYBbbmFUXA5PnKr6FvLI',
-    'https://open.spotify.com/track/03rcC8SVxCa9UdY5qgkITe',
-    'https://open.spotify.com/track/0TEGDFAJ7oNbvpCEgTGugC',
-    'https://open.spotify.com/track/4S4Mfvv03M1cHgIOJcbUCL',
-    'https://open.spotify.com/track/6eHQ2jZEzEyyBeO7K7KPyy',
-    'https://open.spotify.com/track/77v9kYcrCZV615E0P9WMrD',
-    'https://open.spotify.com/track/4TVXQID05mAuTOiWdCPGXW',
-    'https://open.spotify.com/track/0PgqpFFX4WxBbXhjkONk5b',
-    'https://open.spotify.com/track/3xby7fOyqmeON8jsnom0AT',
-    'https://open.spotify.com/track/3s7MCdXyWmwjdcWh7GWXas',
-    'https://open.spotify.com/track/0YsGMHid6sFq5PcToe3JZE',
-    'https://open.spotify.com/track/6euR55gwJ65nxIPeXLPPwo',
-    'https://open.spotify.com/track/2IN5IspnDC534fzg16WtWF',
-    'https://open.spotify.com/track/51EC3I1nQXpec4gDk0mQyP',
-    'https://open.spotify.com/track/5npch1QcXGyA4nVsdGd7eo',
-    'https://open.spotify.com/track/5JaSg0AYyAMMLjyGGDrrCm',
-    'https://open.spotify.com/track/46haIwbQpVUkpAQj9V84Gp'];
-    const negative_examples_input =[
-        'https://open.spotify.com/track/5sF13EvLGv5qHFiMuGnMTF',
-        'https://open.spotify.com/track/0cm53Jz1z1AA7NrfN7VAk6',
-        'https://open.spotify.com/track/4AqGQqjgJypvuSvYL0BDXq',
-        'https://open.spotify.com/track/5D4sv4knuWaF914sVZ4Gi8',
-        'https://open.spotify.com/track/73M0NSi9guum5XYeWoRN9B',
-        'https://open.spotify.com/track/39cTOq0Egkqi718Xb9pYoG',
-        'https://open.spotify.com/track/4fK6E2UywZTJIa5kWnCD6x',
-        'https://open.spotify.com/track/2mFv5DTX0OGxxqcBU9cHIR',
-        'https://open.spotify.com/track/7EAwgBKCOZYZ7d1NLw2FII',
-        'https://open.spotify.com/track/65ezkm2CfwVsYVhaymLrUB',
-        'https://open.spotify.com/track/0qPma6ZHAm8VEyryZpPiyB',
-        'https://open.spotify.com/track/1kjGRQaTtyPh6T9AqvYUby',
-        'https://open.spotify.com/track/6gPqBegU4aDWoSYXeCyURA',
-        'https://open.spotify.com/track/463oFGElXVcP8ueC72zvMj',
-        'https://open.spotify.com/track/6VMadokallxef0OKnF4UdY',
-        'https://open.spotify.com/track/4l62h4tiuUwn7eD6hxMlVQ',
-        'https://open.spotify.com/track/5FqxrLVpdGLRFzG1bLMTry',
-        'https://open.spotify.com/track/0H0MIfeqip6GKmafftx7kC',
-        'https://open.spotify.com/track/4W4DzmECv1tuxIPH9YNytf',
-        'https://open.spotify.com/track/5Yx8aAuhBBsp3fmyCR808F',
-        'https://open.spotify.com/track/5MmZBJytICDLQCjAPCvjxR',
-        'https://open.spotify.com/track/4qHdhSUkmDh6r7Ea4NzAvM',
-        'https://open.spotify.com/track/3o3RCFyXKNuT3Ufa0t2bdI',
-        'https://open.spotify.com/track/2QTMWPo9aKrC4DoqDnrrKh',
-        'https://open.spotify.com/track/5kJiqbdq39yjHEPt8J899v',
-        'https://open.spotify.com/track/4nmpJEfi5M1SyDw2knuZUk',
-        'https://open.spotify.com/track/6MsmJ0hGw0m0oPk1dvUHgO',
-        'https://open.spotify.com/track/0Xsmly8keCas3M69jrcsI3',
-        'https://open.spotify.com/track/1ZvR3HcQboRnwR28aBqoFO',
-        'https://open.spotify.com/track/1GqUlswA2GruOwCAr88oGU'
-    ];
+    const positive_examples_input = await getTrainingInput(true)
+    const negative_examples_input = await getTrainingInput(false)
+
     await sendTrainingExamples(positive_examples_input, negative_examples_input);
     await updateModels();
     app_state.currentModelNumSongs = app_state.models.find(model => model.name === app_state.currentModelName)?.numSongs || 0;
@@ -319,7 +260,7 @@ async function getTrainingInput(isPositive) { // alternate way of readubg input 
             input: process.stdin,
             output: process.stdout
         });
-        console.log(`Input 80-120 Spotify URIs of songs you${isPositive ? '' : ' don\'t'} like. When finished, type 'END' on a new line and press Enter:`);
+        console.log(`Input as many spotify URIs of songs you${isPositive ? '' : ' don\'t'} like as possible. When finished, type 'END' on a new line and press Enter:`);
 
         let uris = [];
 

@@ -18,7 +18,7 @@ export async function handleApiCall(apiFunction, successMessage, failureMessage,
       console.log(chalk.green(successMessage));
       return response;
   } catch (error) {
-      if (error.response.status === 409) {
+      if (error.response && error.response.status === 409) {
           return error.response;
       } else {
           console.error(chalk.red(failureMessage, error.message));

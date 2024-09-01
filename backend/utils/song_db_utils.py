@@ -5,7 +5,7 @@ import random
 import redis.asyncio as asyncio
 import redis
 
-from global_constants import COUNT_KEY, HASH_KEY_SONG_IDS
+from config import COUNT_KEY, HASH_KEY_SONG_IDS
 
 #=======================================================================#
 # def get_song_count(): Gets the number of songs in the db based on

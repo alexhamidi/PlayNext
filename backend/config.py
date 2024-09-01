@@ -7,15 +7,20 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
 #SPOTIFY REQS
-AUDIO_URL = "https://api.spotify.com/v1/audio-analysis/"
-KEYS_TO_USE = ['duration', 'loudness', 'tempo', 'time_signature', 'key', 'mode']
+AUDIO_ANALYSIS_URL = "https://api.spotify.com/v1/audio-analysis/"
+
+#RATE LIMITING
+MAX_API_RETRIES_PER_SONG = 6
+RATE_LIMIT_DELAY = 5
 
 #ML
-NUM_RETRIES_PER_BATCH = 10
+NUM_RETRIES_PER_PREDICTION_BATCH = 8
 POSITIVE_THRESHOLD = .5
 REC_BATCH_SIZE = 20
 NUM_CLASSES = 2
-NUM_FEATURES = len(KEYS_TO_USE)
+NUM_FEATURES = 40000
+MAX_FEATURE_EXAMPLES = 1000
+
 
 #DB
 HASH_KEY_SONG_IDS = "song_ids"

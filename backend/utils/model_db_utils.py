@@ -1,10 +1,12 @@
+#problem: oms and normals being save differently
+
 #=======================================================================#
 # IMPORTS
 #=======================================================================#
 import torch
 import io
 from nn_model import SongClassifier
-from utils.spotify_api_utils import KEYS_TO_USE
+from config import NUM_FEATURES, NUM_CLASSES
 from redis_om import Field, HashModel, Migrator, NotFoundError, get_redis_connection
 import warnings
 warnings.filterwarnings("ignore", message="Field .* has conflict with protected namespace .*")
@@ -27,7 +29,6 @@ class Model(HashModel):
     num_songs: int = Field(default = 0)
     class Meta:
         database = model_redis_connection # any operations will default to this dataabse
-        global_key_prefix = ""
 Migrator().run()
 
 #=======================================================================#
@@ -42,12 +43,25 @@ def add_model(model_name):
     model.save()
 
 #=======================================================================#
+# def delete_model(model_name): Adds a new model with the given name to the
+# database
+#=======================================================================#
+def delete_model(model_name):
+    model = get_model(model_name)
+    model.delete(model.pk)
+
+#=======================================================================#
 # def get_model(model_name): Returns the entire Model object associated
 # with the given model name
 #=======================================================================#
 def get_model(model_name):
     try:
-        return Model.find(Model.model_name == model_name).first()
+        # models = Model.find(Model.model_name != "WHAT").all()
+        # print(models)
+        # return
+        model = Model.find(Model.model_name == model_name).first()
+        return model
+
     except NotFoundError:
         return None
 
@@ -90,20 +104,23 @@ def add_nn_model(model_name, nn_model):
 # with a model name
 #=======================================================================#
 def get_nn_model(model_name):
-    model = get_model(model_name)
+
+    print(f"Retreiving the model object for {model_name}...")
+    model = get_model(model_name) # issue with get_model
+    print('Model retrieved: ', model) # model is none
+
+
     nn_model_base64 = model.nn_model_serialized
     if nn_model_base64 == '':
         print("nn_model is none")
         return None
     try:
         print("model is not none")
-        num_features = len(KEYS_TO_USE)
-        num_classes = 2
 
         nn_model_serialized = base64.b64decode(nn_model_base64.encode('ascii'))
         buffer = io.BytesIO(nn_model_serialized)
         state_dict = torch.load(buffer, weights_only=True)
-        nn_model = SongClassifier(n_features=num_features, n_classes=num_classes)
+        nn_model = SongClassifier(n_features=NUM_FEATURES, n_classes=NUM_CLASSES)
         nn_model.load_state_dict(state_dict)
         return nn_model
     except Exception as e:
